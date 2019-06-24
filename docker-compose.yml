@@ -1,0 +1,39 @@
+version: "3.3"
+services:
+
+  # Kafka/Zookeeper container
+  kafka:
+    image: krisgeus/docker-kafka
+    environment:
+      ADVERTISED_HOST: kafka
+      LOG_RETENTION_HOURS: 1
+      AUTO_CREATE_TOPICS: "false"
+      KAFKA_CREATE_TOPICS: divolte:4:1
+      ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,INTERNAL://localhost:9093
+      LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9093
+      SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      INTER_BROKER: INTERNAL
+
+  # Divolte container
+  divolte:
+    image: divolte/divolte-collector
+    environment:
+      DIVOLTE_KAFKA_BROKER_LIST: kafka:9092
+    ports:
+      - 8290:8290
+    depends_on:
+      - kafka
+
+  # StreamSets container
+  streamsets:
+    build:
+      context: "."
+      args:
+        SDC_LIBS: streamsets-datacollector-apache-kafka_2_0-lib,streamsets-datacollector-google-cloud-lib
+    environment:
+      DIVOLTE_KAFKA_BROKER_LIST: kafka:9092
+    ports:
+      - 18630:18630
+    volumes:
+      - ./sdc-data:/data
+      - ./credentials:/opt/credentials
